@@ -159,10 +159,12 @@ def collect_nutrittion(product_urls,csv_name):
     
     # Export to CSV
     final_data.to_csv(csv_name, index = False, encoding='utf-8-sig')
-    
+
+
+
 # Initiate firefox and access website
-driver = webdriver.Firefox()
-driver.get("https://groceries.asda.com/sitemap/")
+# driver = webdriver.Firefox()
+# driver.get("https://groceries.asda.com/sitemap/")
 
 # %% ################################################### Fruit, Veg & Flowers #################################################### 
 
@@ -348,8 +350,22 @@ driver.execute_script("arguments[0].click();", reject)
 try:
     # Initialize an empty list to hold all product URLs (1074 urls)
     product_urls = []
-    
-    len(product_urls)
+
+    # Calculate chunk size and remainder
+    chunk_size, remainder = divmod(len(product_urls), 4)
+
+    # # Split the list into 4 arrays, adjusting for the remainder
+    # product_urls1 = product_urls[:chunk_size + (1 if remainder > 0 else 0)]
+    # product_urls2 = product_urls[len(product_urls1):len(product_urls1) + chunk_size + (1 if remainder > 1 else 0)]
+    # product_urls3 = product_urls[len(product_urls1) + len(product_urls2):len(product_urls1) + len(product_urls2) + chunk_size + (1 if remainder > 2 else 0)]
+    # product_urls4 = product_urls[len(product_urls1) + len(product_urls2) + len(product_urls3):]
+
+
+    # # Calculate the split index
+    # split_index = len(product_urls1) // 2
+    # # Split the array
+    # product_urls11 = product_urls1[:split_index]
+    # product_urls12 = product_urls1[split_index:]
 
     departmentlink = WebDriverWait(driver, 10).until(
         EC.presence_of_all_elements_located((By.CSS_SELECTOR, ".aisle__link[href*='bakery']"))  
@@ -414,23 +430,19 @@ except Exception as e:
     traceback.print_exc() 
     driver.quit()
 
-collect_nutrittion(product_urls12,"bakerydata12.csv")
+collect_nutrittion(product_urls,"bakerydata.csv")
 # %% 
 
 
-# # Calculate chunk size and remainder
-# chunk_size, remainder = divmod(len(product_urls), 4)
-
-# # Split the list into 4 arrays, adjusting for the remainder
-# product_urls1 = product_urls[:chunk_size + (1 if remainder > 0 else 0)]
-# product_urls2 = product_urls[len(product_urls1):len(product_urls1) + chunk_size + (1 if remainder > 1 else 0)]
-# product_urls3 = product_urls[len(product_urls1) + len(product_urls2):len(product_urls1) + len(product_urls2) + chunk_size + (1 if remainder > 2 else 0)]
-# product_urls4 = product_urls[len(product_urls1) + len(product_urls2) + len(product_urls3):]
 
 
-# # Calculate the split index
-# split_index = len(product_urls1) // 2
-# len(product_urls12)
-# # Split the array
-# product_urls11 = product_urls1[:split_index]
-# product_urls12 = product_urls1[split_index:]
+# df11 = pd.read_csv("bakerydata11.csv")
+# df12 = pd.read_csv("bakerydata12.csv")
+# df2 = pd.read_csv("bakerydata2.csv")
+# df3 = pd.read_csv("bakerydata3.csv")
+# df4 = pd.read_csv("bakerydata4.csv")
+
+# # Concatenate the DataFrames
+# concatenated_df = pd.concat([df11,df12, df2, df3, df4], ignore_index=True)
+
+# concatenated_df.to_csv("bakerydata.csv", index = False, encoding='utf-8-sig')
