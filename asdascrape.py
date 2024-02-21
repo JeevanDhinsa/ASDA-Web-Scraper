@@ -4,6 +4,7 @@ import traceback
 import re
 import pandas as pd
 import numpy as np
+from collections import Counter
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
@@ -23,7 +24,7 @@ def collect_nutrittion(product_urls,csv_name):
 
         #  Get all the information elements for the product
         try:
-            WebDriverWait(driver, 15).until(
+            WebDriverWait(driver, 20).until(
                 EC.presence_of_element_located((By.CLASS_NAME, "pdp-description-reviews__nutrition-cell"))
             )
             element_present = True
@@ -67,6 +68,12 @@ def collect_nutrittion(product_urls,csv_name):
             for i in nutrition:
                 nutdf1 = i.text.strip().split("\n")
                 nutdf1 = nutdf1[1:]
+
+                # exception case where of which saturates are on different lines
+                for i in range(len(nutdf1)- 2, -1, -1):  #  Start from the second-last item down to the first item
+                    if nutdf1[i] == 'of which' and 'Saturates' in nutdf1[i + 1]:
+                        nutdf1[i] += ' ' + nutdf1[i + 1]  # Combine the elements
+                        nutdf1.pop(i + 1)  # Remove the now redundant 'Saturates' element
 
                 # exception case for energy readings with /
                 if nutdf1[0].count('/') == 2:
@@ -152,10 +159,10 @@ def collect_nutrittion(product_urls,csv_name):
     
     # Export to CSV
     final_data.to_csv(csv_name, index = False, encoding='utf-8-sig')
-
+    
 # Initiate firefox and access website
-# driver = webdriver.Firefox()
-# driver.get("https://groceries.asda.com/sitemap/")
+driver = webdriver.Firefox()
+driver.get("https://groceries.asda.com/sitemap/")
 
 # %% ################################################### Fruit, Veg & Flowers #################################################### 
 
@@ -232,6 +239,10 @@ try:
             except TimeoutException:
                 print("Timeout waiting for the next page button.")
                 break
+
+    # remove duplicates       
+    product_urls = list(set(product_urls))
+    
 except Exception as e:
     print(f"An error occurred: {e}")
     traceback.print_exc() 
@@ -262,16 +273,6 @@ driver.execute_script("arguments[0].click();", reject)
 try:
     # Initialize an empty list to hold all product URLs
     product_urls = []
-
-    # Calculate the size of each chunk, rounding up if necessary
-    chunk_size = len(product_urls) // 4 + (len(product_urls) % 4 > 0)
-
-    # Split the array into 4 parts using slicing
-    product_urls1 = product_urls[0:chunk_size]
-    product_urls2 = product_urls[chunk_size:2*chunk_size]
-    product_urls3 = product_urls[2*chunk_size:3*chunk_size]
-    product_urls4 = product_urls[3*chunk_size:]
-
 
     departmentlink = WebDriverWait(driver, 10).until(
         EC.presence_of_all_elements_located((By.CSS_SELECTOR, ".aisle__link[href*='meat-poultry-fish']"))  
@@ -315,15 +316,18 @@ try:
                 print("Timeout waiting for the next page button.")
                 break
 
+    # remove duplicates       
+    product_urls = list(set(product_urls))
+    
 except Exception as e:
     print(f"An error occurred: {e}")
     traceback.print_exc() 
     driver.quit()
 
-collect_nutrittion(product_urls1,"meatdata1.csv")
+collect_nutrittion(product_urls,"meatdata11.csv")
 
 # %%
-#################################################### Bakery ########################################################
+# %% #################################################### Bakery ########################################################
 
 # Use headless mode 
 options = Options()
@@ -342,8 +346,10 @@ driver.execute_script("arguments[0].click();", reject)
 
 # Wait for the page to load and if the dept link is there click it
 try:
-    # Initialize an empty list to hold all product URLs
+    # Initialize an empty list to hold all product URLs (1074 urls)
     product_urls = []
+    
+    len(product_urls)
 
     departmentlink = WebDriverWait(driver, 10).until(
         EC.presence_of_all_elements_located((By.CSS_SELECTOR, ".aisle__link[href*='bakery']"))  
@@ -352,34 +358,40 @@ try:
     department_url = []
     department_url.extend([department.get_attribute('href') for department in departmentlink])
     
-    keywords = ["view-all-extra-special-bakery", "view-all-in-store-bakery", "view-all-wraps-bagels-pittas-naans", "gluten-free-bakery", "bread-rolls", "scones-teacakes-fruit-loaves", "view-all-crumpets-muffins-pancakes", 
+    keywords = ["view-all-extra-special-bakery", "view-all-in-store-bakery", "view-all-wraps-bagels-pittas-naans", "bread-rolls", "view-all-scones-teacakes-fruit-loaves", "view-all-crumpets-muffins-pancakes", 
                 "view-all-cakes", "view-all-desserts-cream-cakes", "view-all-cake-bars-slices-tarts", "view-all-croissants-brioche-on-the-go", "food-to-go-meal-deal"]
     
-    department_url = [url for url in department_url if any(keyword in url for keyword in keywords)]
-   
+    # Create a regex pattern that matches any of the keywords as whole segments
+    # This pattern uses word boundaries (\b) around each keyword to ensure exact matches
+    pattern = r'/(' + '|'.join([re.escape(keyword) for keyword in keywords]) + r')(?=/|$)'
+
+    department_url = [url for url in department_url if re.search(pattern, url)]
+
+    # Manual sort exception 
+    department_url.remove("https://groceries.asda.com/aisle/bakery/in-store-bakery/bread-rolls/1215686354843-1215686354846-1215686354865")
+    department_url.append("https://groceries.asda.com/dept/bakery/bread-rolls/1215686354843-1215686354847")
+
     for d in department_url:
            
         driver.get(d)
 
-        #Collect product urls (1137 urls)
+        #Collect product urls 
         
         # Start iterating through pages to collect product URLs
         while True:
-            products = WebDriverWait(driver, 15).until(
+            products = WebDriverWait(driver, 10).until(
                 EC.presence_of_all_elements_located((By.CSS_SELECTOR, "[data-module-name='Product List (Global Aisle)'] .co-product__anchor,\
-                                                                        [data-module-name='Gluten Free Dept Spotlight'] .co-product__anchor \
-                                                                        [data-module-name='Food To Go Meal Deal - Sandwiches Spotlight'] .co-product__anchor \
-                                                                        [data-module-name='Food To Go Meal Deal - Snacks Spotlight'] .co-product__anchor \
-                                                                        [data-module-name='Bread & Rolls Dept Spotlight'] .co-product__anchor \
-                                                                         [data-module-name='New in Bakery Spotlight'] .co-product__anchor \
-                                                                        [data-module-name='Sandwich Fillers Spotlight'] .co-product__anchor \
-                                                                        [data-module-name='P13N (Global Department)'] .co-product__anchor"))
+                                                                        [data-module-name='Food To Go Meal Deal - Sandwiches Spotlight'] .co-product__anchor,\
+                                                                        [data-module-name='Food To Go Meal Deal - Salad & Sushi Spotlight'] .co-product__anchor,\
+                                                                        [data-module-name='Food To Go Meal Deal - Snacks Spotlight'] .co-product__anchor,\
+                                                                        [data-module-name='Food To Go Meal Deal - Sweet Treat Spotlight'] .co-product__anchor,\
+                                                                        [data-module-name='Sandwich Fillers Spotlight'] .co-product__anchor"))
             )
             product_urls.extend([product.get_attribute('href') for product in products])
 
             try:
                 # Check for the next page button and determine if it's the last page
-                next_page_button = WebDriverWait(driver, 15).until(
+                next_page_button = WebDriverWait(driver, 10).until(
                     EC.element_to_be_clickable((By.CSS_SELECTOR, ".co-pagination__arrow--right"))
                 )
                 # Check if the next page button is disabled (if applicable)
@@ -394,9 +406,31 @@ try:
                 print("Timeout waiting for the next page button.")
                 break
 
+    # remove duplicates       
+    product_urls = list(set(product_urls))
+
 except Exception as e:
     print(f"An error occurred: {e}")
     traceback.print_exc() 
     driver.quit()
 
-collect_nutrittion(product_urls,"bakerydata.csv")
+collect_nutrittion(product_urls12,"bakerydata12.csv")
+# %% 
+
+
+# # Calculate chunk size and remainder
+# chunk_size, remainder = divmod(len(product_urls), 4)
+
+# # Split the list into 4 arrays, adjusting for the remainder
+# product_urls1 = product_urls[:chunk_size + (1 if remainder > 0 else 0)]
+# product_urls2 = product_urls[len(product_urls1):len(product_urls1) + chunk_size + (1 if remainder > 1 else 0)]
+# product_urls3 = product_urls[len(product_urls1) + len(product_urls2):len(product_urls1) + len(product_urls2) + chunk_size + (1 if remainder > 2 else 0)]
+# product_urls4 = product_urls[len(product_urls1) + len(product_urls2) + len(product_urls3):]
+
+
+# # Calculate the split index
+# split_index = len(product_urls1) // 2
+# len(product_urls12)
+# # Split the array
+# product_urls11 = product_urls1[:split_index]
+# product_urls12 = product_urls1[split_index:]
