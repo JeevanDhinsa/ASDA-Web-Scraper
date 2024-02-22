@@ -68,14 +68,19 @@ def collect_nutrittion(product_urls,csv_name):
             for i in nutrition:
                 nutdf1 = i.text.strip().split("\n")
                 nutdf1 = nutdf1[1:]
-
+                nutdf1 = [item.replace(':', '') for item in nutdf1]
+                
                 # exception case where of which saturates are on different lines
                 for i in range(len(nutdf1)- 2, -1, -1):  #  Start from the second-last item down to the first item
                     if nutdf1[i] == 'of which' and 'Saturates' in nutdf1[i + 1]:
                         nutdf1[i] += ' ' + nutdf1[i + 1]  # Combine the elements
                         nutdf1.pop(i + 1)  # Remove the now redundant 'Saturates' element
-
+                
+                
                 # exception case for energy readings with /
+                if "/ " in nutdf1[0] and nutdf1[0].count("/") > 1 and nutdf1[0].count("/ ") < 2:
+                    nutdf1[0] = nutdf1[0].split("/ ", 1)[0]
+
                 if nutdf1[0].count('/') == 2:
                     parts = nutdf1[0].split('/')  
                     # Extract and format the first two parts as 'Energy XXXkJ' and 'XXXkcal'
@@ -83,22 +88,46 @@ def collect_nutrittion(product_urls,csv_name):
                     kcal_part = parts[1].split()[0] + ' '  
                     # Update the list
                     nutdf1[0] = energy_part
-                    nutdf1.insert(1, kcal_part)  
-                if '/' in nutdf1[0]:
-                    nutdf1[0] = nutdf1[0].replace('/', '')
+                    nutdf1.insert(1, kcal_part)      
+                elif '/' in nutdf1[0]:            
+                    parts = nutdf1[0].split('/')
+                    nutdf1 = parts + nutdf1[1:]
 
                 nutdf2 = []
+                
+                # Check if 'Fibre' is in any of the nutdf1 items
+                fibre_present = any('Fibre' in item for item in nutdf1)
+
+                # List of saturates to check for in each item, covering all variations
+                keywords = [
+                    'monounsaturated', '(mono-unsaturates)', 'monounsaturates', 'Mono-unsaturates',
+                    'polyunsaturated', '(polyunsaturates)', 'polyunsaturates','poly-unsaturates'
+                ]
+
+                # Check for 'monounsaturated' or 'mono-unsaturates' and 'polyunsaturated' or 'polyunsaturates'
+                mono_poly_unsaturated_present = any(any(keyword.lower() in item.lower() for keyword in keywords) for item in nutdf1)
 
                 # New titles to replace the original ones
-                new_labels = ['energy kj', 'energy kcal', 'fat', 'of which saturates', 'carbohydrate', 'of which sugars', 'fibre', 'protein', 'salt']   
+                new_labels = ['energy kj', 'energy kcal', 'fat', 'of which saturates', 'carbohydrate', 'of which sugars', 'fibre', 'protein', 'salt'] 
+                
+                # Define the labels for when 'monounsaturated' or 'polyunsaturated' are present
+                new_labels2 = ['energy kj', 'energy kcal', 'fat', 'of which saturates', 'of which monounsaturated', 'of which polyunsaturated', 'carbohydrate', 'of which sugars', 'fibre', 'protein', 'salt']
+
+                # Choose the correct set of labels based on the checks
+                if mono_poly_unsaturated_present:
+                    chosen_labels = new_labels2
+                else:
+                    chosen_labels = new_labels
+                if not fibre_present and 'fibre' in chosen_labels:
+                    chosen_labels.remove('fibre')
 
                 # Updated regex to capture more specific details from the strings, including potential guidelines amounts.
                 pattern = r"^(.*?)(<\d*\.?\d+|\d*\.?\d+|Trace)(g|kJ|kcal|µg)?( \d*%?)?"
 
                 # Processing all items
                 for i, item in enumerate(nutdf1):
-                    if i < len(new_labels):  # Apply new titles for the first 8 items
-                        label = new_labels[i]
+                    if i < len(chosen_labels):  # Apply new titles for the first 8 items
+                        label = chosen_labels[i]
                     else:  # Keep the original title for items beyond the first 8
                         match = re.match(r"^(.*?)( \d+µg \d+%?)", item)  # Match items
                         if match:
@@ -112,7 +141,7 @@ def collect_nutrittion(product_urls,csv_name):
                     if match:
                         name, amount, unit, guideline = match.groups()
                         amount_with_unit = f"{amount}{unit}" if unit else amount
-                        if i >= len(new_labels):  # For items beyond the first 8, include any additional details like %RI
+                        if i >= len(chosen_labels):  # For items beyond the first 8, include any additional details like %RI
                             amount_with_unit += guideline if guideline else ""
                         nutdf2.append((label, amount_with_unit))
 
@@ -144,6 +173,8 @@ def collect_nutrittion(product_urls,csv_name):
             nutrition_df.index = title_df.index
 
             product_data = pd.concat([title_df,nutrition_df],axis = 1)
+            # Removing duplicate columns
+            product_data = product_data.loc[:, ~product_data.columns.duplicated()]
             
             dataframes_list.append(product_data)
     
@@ -152,7 +183,7 @@ def collect_nutrittion(product_urls,csv_name):
     driver.quit()
 
     if dataframes_list:
-        final_data = pd.concat(dataframes_list, ignore_index=True)
+        final_data = pd.concat(dataframes_list, ignore_index=False)
     else:
         print("No data frames to concatenate. The list is empty.")
 
@@ -161,10 +192,9 @@ def collect_nutrittion(product_urls,csv_name):
     final_data.to_csv(csv_name, index = False, encoding='utf-8-sig')
 
 
-
 # Initiate firefox and access website
-# driver = webdriver.Firefox()
-# driver.get("https://groceries.asda.com/sitemap/")
+driver = webdriver.Firefox()
+driver.get("https://groceries.asda.com/sitemap/")
 
 # %% ################################################### Fruit, Veg & Flowers #################################################### 
 
@@ -351,22 +381,6 @@ try:
     # Initialize an empty list to hold all product URLs (1074 urls)
     product_urls = []
 
-    # Calculate chunk size and remainder
-    chunk_size, remainder = divmod(len(product_urls), 4)
-
-    # # Split the list into 4 arrays, adjusting for the remainder
-    # product_urls1 = product_urls[:chunk_size + (1 if remainder > 0 else 0)]
-    # product_urls2 = product_urls[len(product_urls1):len(product_urls1) + chunk_size + (1 if remainder > 1 else 0)]
-    # product_urls3 = product_urls[len(product_urls1) + len(product_urls2):len(product_urls1) + len(product_urls2) + chunk_size + (1 if remainder > 2 else 0)]
-    # product_urls4 = product_urls[len(product_urls1) + len(product_urls2) + len(product_urls3):]
-
-
-    # # Calculate the split index
-    # split_index = len(product_urls1) // 2
-    # # Split the array
-    # product_urls11 = product_urls1[:split_index]
-    # product_urls12 = product_urls1[split_index:]
-
     departmentlink = WebDriverWait(driver, 10).until(
         EC.presence_of_all_elements_located((By.CSS_SELECTOR, ".aisle__link[href*='bakery']"))  
     )
@@ -432,17 +446,115 @@ except Exception as e:
 
 collect_nutrittion(product_urls,"bakerydata.csv")
 # %% 
+# %%  #################################################### Chilled Food ########################################################
+# Use headless mode 
+options = Options()
+options.add_argument("--headless")
+driver = webdriver.Firefox(options=options)
+driver.get("https://groceries.asda.com/sitemap/")
 
 
+# Reject cookies
+reject = WebDriverWait(driver, 10).until(
+    EC.element_to_be_clickable((By.XPATH, "//button[@id='onetrust-reject-all-handler']"))  
+)
+
+driver.execute_script("arguments[0].click();", reject)
 
 
-# df11 = pd.read_csv("bakerydata11.csv")
-# df12 = pd.read_csv("bakerydata12.csv")
-# df2 = pd.read_csv("bakerydata2.csv")
-# df3 = pd.read_csv("bakerydata3.csv")
-# df4 = pd.read_csv("bakerydata4.csv")
+# Wait for the page to load and if the dept link is there click it
+try:
+    # Initialize an empty list to hold all product URLs (1074 urls)
+    product_urls = []
 
-# # Concatenate the DataFrames
-# concatenated_df = pd.concat([df11,df12, df2, df3, df4], ignore_index=True)
+    departmentlink = WebDriverWait(driver, 10).until(
+        EC.presence_of_all_elements_located((By.CSS_SELECTOR, ".aisle__link[href*='aisle/chilled-food']"))  
+    )
 
-# concatenated_df.to_csv("bakerydata.csv", index = False, encoding='utf-8-sig')
+    department_url = []
+    department_url.extend([department.get_attribute('href') for department in departmentlink])
+    
+
+    keywords = ["100-calorie-zone", "afternoon-tea", "party-decorations-accessories", "oven-trays", "meal-deals", "take-out-club-pizza-meal-deal", 
+                "food-to-go-meal-deal", "lunch-ideas", "2-for-5-cooked-meats", "2-for-3-cooked-meats"]
+    
+    # Create a regex pattern that matches any of the keywords as whole segments
+    # This pattern uses word boundaries (\b) around each keyword to ensure exact matches
+    pattern = r'/(' + '|'.join([re.escape(keyword) for keyword in keywords]) + r')(?=/|$)'
+
+    department_url = [url for url in department_url if not re.search(pattern, url)]
+
+
+    for d in department_url:
+           
+        driver.get(d)
+
+        #Collect product urls 
+        
+        # Start iterating through pages to collect product URLs
+        while True:
+            products = WebDriverWait(driver, 10).until(
+                EC.presence_of_all_elements_located((By.CSS_SELECTOR, "[data-module-name='Product List (Global Aisle)'] .co-product__anchor"))
+            )
+            product_urls.extend([product.get_attribute('href') for product in products])
+
+            try:
+                # Check for the next page button and determine if it's the last page
+                next_page_button = WebDriverWait(driver, 10).until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, ".co-pagination__arrow--right"))
+                )
+                # Check if the next page button is disabled (if applicable)
+                if 'disabled' in next_page_button.get_attribute('class'):
+                    break
+                else:
+                    driver.execute_script("arguments[0].click();", next_page_button)
+            except NoSuchElementException:
+                print("Reached the last page or next page button not found.")
+                break
+            except TimeoutException:
+                print("Timeout waiting for the next page button.")
+                break
+
+    # remove duplicates       
+    product_urls = list(set(product_urls))
+
+except Exception as e:
+    print(f"An error occurred: {e}")
+    traceback.print_exc() 
+    driver.quit()
+
+collect_nutrittion(product_urls,"chilledfooddata.csv")
+# %%
+
+# len(product_urls)
+
+# # Calculate chunk size and remainder
+# chunk_size, remainder = divmod(len(product_urls), 4)
+
+# # Split the list into 4 arrays, adjusting for the remainder
+# product_urls1 = product_urls[:chunk_size + (1 if remainder > 0 else 0)]
+# product_urls2 = product_urls[len(product_urls1):len(product_urls1) + chunk_size + (1 if remainder > 1 else 0)]
+# product_urls3 = product_urls[len(product_urls1) + len(product_urls2):len(product_urls1) + len(product_urls2) + chunk_size + (1 if remainder > 2 else 0)]
+# product_urls4 = product_urls[len(product_urls1) + len(product_urls2) + len(product_urls3):]
+
+
+# # Calculate the split index
+# split_index = len(product_urls1) // 2
+# # Split the array
+# product_urls11 = product_urls1[:split_index]
+# product_urls12 = product_urls1[split_index:]
+
+
+# # df11 = pd.read_csv("bakerydata11.csv")
+# # df12 = pd.read_csv("bakerydata12.csv")
+# # df2 = pd.read_csv("bakerydata2.csv")
+# # df3 = pd.read_csv("bakerydata3.csv")
+# # df4 = pd.read_csv("bakerydata4.csv")
+
+# # # Concatenate the DataFrames
+# # concatenated_df = pd.concat([df11,df12, df2, df3, df4], ignore_index=True)
+
+# # concatenated_df.to_csv("bakerydata.csv", index = False, encoding='utf-8-sig')
+
+# final_data.to_csv("chilledfooddata11.csv", index = False, encoding='utf-8-sig')
+
