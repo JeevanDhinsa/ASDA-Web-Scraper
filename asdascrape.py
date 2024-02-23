@@ -69,13 +69,17 @@ def collect_nutrittion(product_urls,csv_name):
                 nutdf1 = i.text.strip().split("\n")
                 nutdf1 = nutdf1[1:]
                 nutdf1 = [item.replace(':', '') for item in nutdf1]
+                nutdf1 = [item for item in nutdf1 if "negligible" not in item.lower()]
                 
                 # exception case where of which saturates are on different lines
                 for i in range(len(nutdf1)- 2, -1, -1):  #  Start from the second-last item down to the first item
                     if nutdf1[i] == 'of which' and 'Saturates' in nutdf1[i + 1]:
                         nutdf1[i] += ' ' + nutdf1[i + 1]  # Combine the elements
                         nutdf1.pop(i + 1)  # Remove the now redundant 'Saturates' element
-                
+
+                if "(" in nutdf1[0]:
+                    bracket = nutdf1[0].split("(",1)
+                    nutdf1 = bracket + nutdf1[1:]
                 
                 # exception case for energy readings with /
                 if "/ " in nutdf1[0] and nutdf1[0].count("/") > 1 and nutdf1[0].count("/ ") < 2:
@@ -88,15 +92,23 @@ def collect_nutrittion(product_urls,csv_name):
                     kcal_part = parts[1].split()[0] + ' '  
                     # Update the list
                     nutdf1[0] = energy_part
-                    nutdf1.insert(1, kcal_part)      
+                    nutdf1.insert(1, kcal_part) 
+                elif nutdf1[0].endswith("/"):
+                    # Remove the last character ("/") from the first item
+                    nutdf1[0] = nutdf1[0][:-1]         
                 elif '/' in nutdf1[0]:            
                     parts = nutdf1[0].split('/')
                     nutdf1 = parts + nutdf1[1:]
 
+
                 nutdf2 = []
                 
                 # Check if 'Fibre' is in any of the nutdf1 items
-                fibre_present = any('Fibre' in item for item in nutdf1)
+                fibre_present = any('fibre' in item.lower() for item in nutdf1)
+                fat_present =  any('fat' in item.lower() for item in nutdf1)
+                carbohydrate_present =  any('carbohydrate' in item.lower() for item in nutdf1)
+                protein_present =  any('protein' in item.lower() for item in nutdf1)
+                salt_present =  any('salt' in item.lower() for item in nutdf1)
 
                 # List of saturates to check for in each item, covering all variations
                 keywords = [
@@ -120,6 +132,24 @@ def collect_nutrittion(product_urls,csv_name):
                     chosen_labels = new_labels
                 if not fibre_present and 'fibre' in chosen_labels:
                     chosen_labels.remove('fibre')
+                if not fat_present:
+                    if 'fat' in chosen_labels:
+                        chosen_labels.remove('fat')
+                        if 'of which saturates' in chosen_labels:
+                            chosen_labels.remove('of which saturates')
+
+                if not carbohydrate_present:
+                    if 'carbohydrate' in chosen_labels:
+                        chosen_labels.remove('carbohydrate')
+                        if 'of which sugars' in chosen_labels:
+                            chosen_labels.remove('of which sugars')
+
+                if not protein_present and 'protein' in chosen_labels:
+                    chosen_labels.remove('protein')
+
+                if not salt_present and 'salt' in chosen_labels:
+                    chosen_labels.remove('salt')
+
 
                 # Updated regex to capture more specific details from the strings, including potential guidelines amounts.
                 pattern = r"^(.*?)(<\d*\.?\d+|\d*\.?\d+|Trace)(g|kJ|kcal|µg)?( \d*%?)?"
@@ -484,6 +514,13 @@ try:
 
     department_url = [url for url in department_url if not re.search(pattern, url)]
 
+    # Manual sort exception 
+    department_url.remove("https://groceries.asda.com/aisle/chilled-food/cheese/continental-cheese/1215660378320-1215341805721-1215341806015")
+    department_url.extend(["https://groceries.asda.com/shelf/chilled-food/cheese/continental-cheese/brie-camembert/1215660378320-1215341805721-1215341806015-1215341830339",
+                          "https://groceries.asda.com/shelf/chilled-food/cheese/continental-cheese/parmesan-hard-cheese/1215660378320-1215341805721-1215341806015-1215627294585",
+                          "https://groceries.asda.com/shelf/chilled-food/cheese/continental-cheese/mozzarella-mascarpone/1215660378320-1215341805721-1215341806015-1215341830518",
+                          "https://groceries.asda.com/shelf/chilled-food/cheese/continental-cheese/feta-halloumi-salad/1215660378320-1215341805721-1215341806015-1215341830577"])
+
 
     for d in department_url:
            
@@ -493,8 +530,9 @@ try:
         
         # Start iterating through pages to collect product URLs
         while True:
-            products = WebDriverWait(driver, 10).until(
-                EC.presence_of_all_elements_located((By.CSS_SELECTOR, "[data-module-name='Product List (Global Aisle)'] .co-product__anchor"))
+            products = WebDriverWait(driver, 5).until(
+                EC.presence_of_all_elements_located((By.CSS_SELECTOR, "[data-module-name='Product List (Global Aisle)'] .co-product__anchor, \
+                                                                        [data-module-name='Shelf Product List (Global Rule)'] .co-product__anchor"))
             )
             product_urls.extend([product.get_attribute('href') for product in products])
 
@@ -505,6 +543,7 @@ try:
                 )
                 # Check if the next page button is disabled (if applicable)
                 if 'disabled' in next_page_button.get_attribute('class'):
+                    print("last page")
                     break
                 else:
                     driver.execute_script("arguments[0].click();", next_page_button)
@@ -521,12 +560,18 @@ try:
 except Exception as e:
     print(f"An error occurred: {e}")
     traceback.print_exc() 
-    driver.quit()
+    
 
 collect_nutrittion(product_urls,"chilledfooddata.csv")
 # %%
 
-# len(product_urls)
+#### run a section of chilled food to test , also rerun meat and bakery to update fixed issues 
+
+len(product_urls)
+
+split_product_urls = [product_urls[i:i + 100] for i in range(0, len(product_urls), 100)]
+
+product_urls3 = split_product_urls[2]
 
 # # Calculate chunk size and remainder
 # chunk_size, remainder = divmod(len(product_urls), 4)
@@ -558,3 +603,16 @@ collect_nutrittion(product_urls,"chilledfooddata.csv")
 
 # final_data.to_csv("chilledfooddata11.csv", index = False, encoding='utf-8-sig')
 
+#driver.quit()
+
+# Assuming product_urls is a list of URLs
+df = pd.DataFrame(product_urls, columns=['URL'])
+
+# Save to CSV
+df.to_csv("chilledproducturls.csv", index=False)
+
+# Load from CSV
+test = pd.read_csv("chilledproducturls.csv")
+
+# Convert to list
+test_list = test['URL'].tolist()
