@@ -16,7 +16,7 @@ from selenium.common.exceptions import TimeoutException
 from selenium.common.exceptions import NoSuchElementException
 
 
-def collect_nutrittion(product_urls,csv_name):
+def collect_nutrition(product_urls,csv_name):
     dataframes_list = []
     for p in product_urls:
 
@@ -70,14 +70,16 @@ def collect_nutrittion(product_urls,csv_name):
                 nutdf1 = nutdf1[1:]
                 nutdf1 = [item.replace(':', '') for item in nutdf1]
                 nutdf1 = [item for item in nutdf1 if "negligible" not in item.lower()]
-                
+                nutdf1[0] = nutdf1[0].replace("(kJ/kcal)", "").strip()
+                nutdf1[0] = nutdf1[0].replace("kJ/kcal", "").strip()
+
                 # exception case where of which saturates are on different lines
                 for i in range(len(nutdf1)- 2, -1, -1):  #  Start from the second-last item down to the first item
                     if nutdf1[i] == 'of which' and 'Saturates' in nutdf1[i + 1]:
                         nutdf1[i] += ' ' + nutdf1[i + 1]  # Combine the elements
                         nutdf1.pop(i + 1)  # Remove the now redundant 'Saturates' element
 
-                if "(" in nutdf1[0]:
+                if re.search(r"\(\d", nutdf1[0]):
                     bracket = nutdf1[0].split("(",1)
                     nutdf1 = bracket + nutdf1[1:]
                 
@@ -95,11 +97,31 @@ def collect_nutrittion(product_urls,csv_name):
                     nutdf1.insert(1, kcal_part) 
                 elif nutdf1[0].endswith("/"):
                     # Remove the last character ("/") from the first item
-                    nutdf1[0] = nutdf1[0][:-1]         
-                elif '/' in nutdf1[0]:            
+                    nutdf1[0] = nutdf1[0][:-1]    
+                # exception cases for punctation in energy title     
+                elif re.search(r"/\s*\d", nutdf1[0]):           
                     parts = nutdf1[0].split('/')
                     nutdf1 = parts + nutdf1[1:]
-
+                if re.search(r",\s*\d", nutdf1[0]):
+                    parts = nutdf1[0].split(',')
+                    nutdf1 = parts + nutdf1[1:]
+                if re.search(r"-\s*\d", nutdf1[0]):
+                    parts = nutdf1[0].split('-')
+                    nutdf1 = parts + nutdf1[1:]
+                # Check if 'calories' is in the first item 
+                if "calories" in nutdf1[0].lower():
+                    # Find all occurrences of one or more digits
+                    numbers = re.findall(r'\d+', nutdf1[0])
+                    # Proceed only if there's exactly one number
+                    if len(numbers) == 1:
+                        # Find the first occurrence of one or more digits and everything after
+                        match = re.search(r'\d+.*', nutdf1[0])
+                        if match: 
+                            # Extract the matched string (number and everything after it)
+                            number_and_after = match.group()
+                            nutdf1[0] = nutdf1[0][:match.start()].strip()
+                            # Insert the extracted part at the next position in the list
+                            nutdf1.insert(1, number_and_after)
 
                 nutdf2 = []
                 
@@ -191,8 +213,8 @@ def collect_nutrittion(product_urls,csv_name):
                 'Supermarket': "ASDA",
                 'Title': title.text + " " + weight.text,
                 'Cost': re.sub(r'[a-zA-Z]|\\|\n', '', cost.text),
-                'Catergory': cat[0],
-                'Subcatergory': cat[1]
+                'Catergory': cat[0] if len(cat) > 0 else "N/A",
+                'Subcatergory': cat[1] if len(cat) > 1 else "N/A"
                 }
             
             title_df = pd.DataFrame([data1])
@@ -312,7 +334,7 @@ except Exception as e:
 
 
 
-collect_nutrittion(product_urls,"testdata.csv")
+collect_nutrition(product_urls,"testdata.csv")
 # %%
 # %% #################################################### Meat, Poultry & Fish ########################################################
 
@@ -386,7 +408,7 @@ except Exception as e:
     traceback.print_exc() 
     driver.quit()
 
-collect_nutrittion(product_urls,"meatdata11.csv")
+collect_nutrition(product_urls,"meatdata11.csv")
 
 # %%
 # %% #################################################### Bakery ########################################################
@@ -474,7 +496,7 @@ except Exception as e:
     traceback.print_exc() 
     driver.quit()
 
-collect_nutrittion(product_urls,"bakerydata.csv")
+collect_nutrition(product_urls,"bakerydata.csv")
 # %% 
 # %%  #################################################### Chilled Food ########################################################
 # Use headless mode 
@@ -562,16 +584,18 @@ except Exception as e:
     traceback.print_exc() 
     
 
-collect_nutrittion(product_urls,"chilledfooddata.csv")
+collect_nutrition(product_urls4,"chilledfooddata4.csv")
 # %%
 
 #### run a section of chilled food to test , also rerun meat and bakery to update fixed issues 
 
-len(product_urls)
+#len(product_urls4)
 
 split_product_urls = [product_urls[i:i + 100] for i in range(0, len(product_urls), 100)]
 
-product_urls3 = split_product_urls[2]
+product_urls5 = split_product_urls[4]
+
+
 
 # # Calculate chunk size and remainder
 # chunk_size, remainder = divmod(len(product_urls), 4)
@@ -605,14 +629,14 @@ product_urls3 = split_product_urls[2]
 
 #driver.quit()
 
-# Assuming product_urls is a list of URLs
-df = pd.DataFrame(product_urls, columns=['URL'])
+# # Assuming product_urls is a list of URLs
+# df = pd.DataFrame(product_urls, columns=['URL'])
 
-# Save to CSV
-df.to_csv("chilledproducturls.csv", index=False)
+# # Save to CSV
+# df.to_csv("chilledproducturls.csv", index=False)
 
 # Load from CSV
-test = pd.read_csv("chilledproducturls.csv")
+product_urls = pd.read_csv("chilledproducturls.csv")
 
 # Convert to list
-test_list = test['URL'].tolist()
+product_urls = product_urls['URL'].tolist()
