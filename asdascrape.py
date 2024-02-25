@@ -63,7 +63,6 @@ def collect_nutrition(product_urls,csv_name):
                 cat.extend(titles)
             cat = cat[:2]
 
-
             #  Extracting nutrition data
             for i in nutrition:
                 nutdf1 = i.text.strip().split("\n")
@@ -71,7 +70,10 @@ def collect_nutrition(product_urls,csv_name):
                 nutdf1 = [item.replace(':', '') for item in nutdf1]
                 nutdf1 = [item for item in nutdf1 if "negligible" not in item.lower()]
                 nutdf1[0] = nutdf1[0].replace("(kJ/kcal)", "").strip()
+                nutdf1[0] = nutdf1[0].replace(", kJ/kcal", "").strip()
                 nutdf1[0] = nutdf1[0].replace("kJ/kcal", "").strip()
+                nutdf1[0] = re.sub(r'\(\d+%\s*.*?\)', '', nutdf1[0])
+
 
                 # exception case where of which saturates are on different lines
                 for i in range(len(nutdf1)- 2, -1, -1):  #  Start from the second-last item down to the first item
@@ -102,12 +104,26 @@ def collect_nutrition(product_urls,csv_name):
                 elif re.search(r"/\s*\d", nutdf1[0]):           
                     parts = nutdf1[0].split('/')
                     nutdf1 = parts + nutdf1[1:]
+
+                # comma 
+                if nutdf1[0].count(",") > 1 :
+                    first_comma = nutdf1[0].find(',')
+                    second_comma = nutdf1[0].find(',', first_comma + 1)
+                    nutdf1[0] = nutdf1[0][:second_comma] + nutdf1[0][second_comma+1:]
                 if re.search(r",\s*\d", nutdf1[0]):
                     parts = nutdf1[0].split(',')
                     nutdf1 = parts + nutdf1[1:]
+
+                # dash
+                if nutdf1[0].count("-") > 1 :
+                    first_dash = nutdf1[0].find('-')
+                    second_dash = nutdf1[0].find('-', first_dash + 1)
+                    nutdf1[0] = nutdf1[0][:second_dash] + nutdf1[0][second_dash+1:]
                 if re.search(r"-\s*\d", nutdf1[0]):
                     parts = nutdf1[0].split('-')
                     nutdf1 = parts + nutdf1[1:]
+
+
                 # Check if 'calories' is in the first item 
                 if "calories" in nutdf1[0].lower():
                     # Find all occurrences of one or more digits
@@ -584,7 +600,7 @@ except Exception as e:
     traceback.print_exc() 
     
 
-collect_nutrition(product_urls4,"chilledfooddata4.csv")
+collect_nutrition(product_urls10,"chilledfooddata10.csv")
 # %%
 
 #### run a section of chilled food to test , also rerun meat and bakery to update fixed issues 
@@ -593,7 +609,7 @@ collect_nutrition(product_urls4,"chilledfooddata4.csv")
 
 split_product_urls = [product_urls[i:i + 100] for i in range(0, len(product_urls), 100)]
 
-product_urls5 = split_product_urls[4]
+product_urls10 = split_product_urls[9]
 
 
 
