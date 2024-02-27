@@ -24,7 +24,7 @@ def collect_nutrition(product_urls,csv_name):
 
         #  Get all the information elements for the product
         try:
-            WebDriverWait(driver, 20).until(
+            WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((By.CLASS_NAME, "pdp-description-reviews__nutrition-cell"))
             )
             element_present = True
@@ -424,7 +424,7 @@ except Exception as e:
     traceback.print_exc() 
     driver.quit()
 
-collect_nutrition(product_urls,"meatdata11.csv")
+collect_nutrition(product_urls,"meatdata.csv")
 
 # %%
 # %% #################################################### Bakery ########################################################
@@ -600,27 +600,21 @@ except Exception as e:
     traceback.print_exc() 
     
 
-collect_nutrition(product_urls10,"chilledfooddata10.csv")
+collect_nutrition(product_urls,"chilledfooddata.csv")
+# %%
+# %%  #################################################### Frozen Food ########################################################
+# insert code here
+
 # %%
 
-#### run a section of chilled food to test , also rerun meat and bakery to update fixed issues 
+# rerun meat and bakery to update fixed issues 
 
-#len(product_urls4)
+#len(product_urls1)
 
 split_product_urls = [product_urls[i:i + 100] for i in range(0, len(product_urls), 100)]
 
-product_urls10 = split_product_urls[9]
+product_urls8 = split_product_urls[7]
 
-
-
-# # Calculate chunk size and remainder
-# chunk_size, remainder = divmod(len(product_urls), 4)
-
-# # Split the list into 4 arrays, adjusting for the remainder
-# product_urls1 = product_urls[:chunk_size + (1 if remainder > 0 else 0)]
-# product_urls2 = product_urls[len(product_urls1):len(product_urls1) + chunk_size + (1 if remainder > 1 else 0)]
-# product_urls3 = product_urls[len(product_urls1) + len(product_urls2):len(product_urls1) + len(product_urls2) + chunk_size + (1 if remainder > 2 else 0)]
-# product_urls4 = product_urls[len(product_urls1) + len(product_urls2) + len(product_urls3):]
 
 
 # # Calculate the split index
@@ -630,20 +624,47 @@ product_urls10 = split_product_urls[9]
 # product_urls12 = product_urls1[split_index:]
 
 
-# # df11 = pd.read_csv("bakerydata11.csv")
-# # df12 = pd.read_csv("bakerydata12.csv")
-# # df2 = pd.read_csv("bakerydata2.csv")
-# # df3 = pd.read_csv("bakerydata3.csv")
-# # df4 = pd.read_csv("bakerydata4.csv")
+df1 = pd.read_csv("meatdata1.csv")
+df2 = pd.read_csv("meatdata2.csv")
+df3 = pd.read_csv("meatdata3.csv")
+df4 = pd.read_csv("meatdata4.csv")
+df5 = pd.read_csv("meatdata5.csv")
+df6 = pd.read_csv("meatdata6.csv")
+df7 = pd.read_csv("meatdata7.csv")
+df8 = pd.read_csv("meatdata8.csv")
 
-# # # Concatenate the DataFrames
-# # concatenated_df = pd.concat([df11,df12, df2, df3, df4], ignore_index=True)
 
-# # concatenated_df.to_csv("bakerydata.csv", index = False, encoding='utf-8-sig')
+# df9 = pd.read_csv("chilledfooddata9.csv")
+# df10 = pd.read_csv("chilledfooddata10.csv")
+# df11 = pd.read_csv("chilledfooddata11.csv")
+# df12 = pd.read_csv("chilledfooddata12.csv")
+# df13 = pd.read_csv("chilledfooddata13.csv")
+# df14 = pd.read_csv("chilledfooddata14.csv")
+# df15 = pd.read_csv("chilledfooddata15.csv")
+# df16 = pd.read_csv("chilledfooddata16.csv")
+# df17 = pd.read_csv("chilledfooddata17.csv")
+# df18 = pd.read_csv("chilledfooddata18.csv")
+# df19 = pd.read_csv("chilledfooddata19.csv")
+# df20 = pd.read_csv("chilledfooddata20.csv")
+# df21 = pd.read_csv("chilledfooddata21.csv")
+# df22 = pd.read_csv("chilledfooddata22.csv")
+# df23 = pd.read_csv("chilledfooddata23.csv")
+# df24 = pd.read_csv("chilledfooddata24.csv")
+# df25 = pd.read_csv("chilledfooddata25.csv")
+# df26 = pd.read_csv("chilledfooddata26.csv")
+# df27 = pd.read_csv("chilledfooddata27.csv")
+# df28 = pd.read_csv("chilledfooddata28.csv")
+# df29 = pd.read_csv("chilledfooddata29.csv")
+# df30 = pd.read_csv("chilledfooddata30.csv")
+
+# # Concatenate the DataFrames
+# concatenated_df = pd.concat([df1, df2, df3, df4, df5, df6, df7, df8], ignore_index=True)
+
+# concatenated_df.to_csv("meatdata.csv", index = False, encoding='utf-8-sig')
 
 # final_data.to_csv("chilledfooddata11.csv", index = False, encoding='utf-8-sig')
 
-#driver.quit()
+
 
 # # Assuming product_urls is a list of URLs
 # df = pd.DataFrame(product_urls, columns=['URL'])
@@ -651,8 +672,8 @@ product_urls10 = split_product_urls[9]
 # # Save to CSV
 # df.to_csv("chilledproducturls.csv", index=False)
 
-# Load from CSV
-product_urls = pd.read_csv("chilledproducturls.csv")
+# # Load from CSV
+# product_urls = pd.read_csv("chilledproducturls.csv")
 
-# Convert to list
-product_urls = product_urls['URL'].tolist()
+# # Convert to list
+# product_urls = product_urls['URL'].tolist()
