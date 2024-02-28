@@ -603,18 +603,95 @@ except Exception as e:
 collect_nutrition(product_urls,"chilledfooddata.csv")
 # %%
 # %%  #################################################### Frozen Food ########################################################
-# insert code here
+# Use headless mode 
+options = Options()
+options.add_argument("--headless")
+driver = webdriver.Firefox(options=options)
+driver.get("https://groceries.asda.com/sitemap/")
 
+
+# Reject cookies
+reject = WebDriverWait(driver, 10).until(
+    EC.element_to_be_clickable((By.XPATH, "//button[@id='onetrust-reject-all-handler']"))  
+)
+
+driver.execute_script("arguments[0].click();", reject)
+
+
+# Wait for the page to load and if the dept link is there click it
+try:
+    # Initialize an empty list to hold all product URLs (948 urls)
+    product_urls = []
+
+    departmentlink = WebDriverWait(driver, 10).until(
+        EC.presence_of_all_elements_located((By.CSS_SELECTOR, ".aisle__link[href*='aisle/frozen-food']"))  
+    )
+
+    department_url = []
+    department_url.extend([department.get_attribute('href') for department in departmentlink])
+    len(department_url)
+
+    keywords = ["3-for-10-frozen-meat", "scratch-cook-from-frozen","oven-trays", "meal-deals", "4-for-6-frozen-ready-meals","ice-cream-parlour","pies-ready-meals"]
+    
+    # Create a regex pattern that matches any of the keywords as whole segments
+    # This pattern uses word boundaries (\b) around each keyword to ensure exact matches
+    pattern = r'/(' + '|'.join([re.escape(keyword) for keyword in keywords]) + r')(?=/|$)'
+
+    department_url = [url for url in department_url if not re.search(pattern, url)]
+
+    # Manual sort exception 
+    #department_url.remove()
+    department_url.extend(["https://groceries.asda.com/aisle/frozen-food/ice-cream-parlour/view-all-ice-cream-parlour/1215338621416-1215338747181-1215685901765",
+                           "https://groceries.asda.com/aisle/frozen-food/pies-ready-meals/view-all-ready-meals/1215338621416-1215338748688-1215685962175"])
+
+
+    for d in department_url:
+           
+        driver.get(d)
+        #Collect product urls 
+        
+        # Start iterating through pages to collect product URLs
+        while True:
+            products = WebDriverWait(driver, 5).until(
+                EC.presence_of_all_elements_located((By.CSS_SELECTOR, "[data-module-name='Product List (Global Aisle)'] .co-product__anchor"))
+            )
+            product_urls.extend([product.get_attribute('href') for product in products])
+
+            try:
+                # Check for the next page button and determine if it's the last page
+                next_page_button = WebDriverWait(driver, 10).until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, ".co-pagination__arrow--right"))
+                )
+                # Check if the next page button is disabled (if applicable)
+                if 'disabled' in next_page_button.get_attribute('class'):
+                    print("last page")
+                    break
+                else:
+                    driver.execute_script("arguments[0].click();", next_page_button)
+            except NoSuchElementException:
+                print("Reached the last page or next page button not found.")
+                break
+            except TimeoutException:
+                print("Timeout waiting for the next page button.")
+                break
+
+    # remove duplicates       
+    product_urls = list(set(product_urls))
+
+except Exception as e:
+    print(f"An error occurred: {e}")
+    traceback.print_exc() 
+    
+collect_nutrition(product_urls,"frozenfooddata.csv")
 # %%
 
 # rerun meat and bakery to update fixed issues 
 
-#len(product_urls1)
+len(product_urls)
 
 split_product_urls = [product_urls[i:i + 100] for i in range(0, len(product_urls), 100)]
 
-product_urls8 = split_product_urls[7]
-
+product_urls10 = split_product_urls[9]
 
 
 # # Calculate the split index
@@ -624,18 +701,17 @@ product_urls8 = split_product_urls[7]
 # product_urls12 = product_urls1[split_index:]
 
 
-df1 = pd.read_csv("meatdata1.csv")
-df2 = pd.read_csv("meatdata2.csv")
-df3 = pd.read_csv("meatdata3.csv")
-df4 = pd.read_csv("meatdata4.csv")
-df5 = pd.read_csv("meatdata5.csv")
-df6 = pd.read_csv("meatdata6.csv")
-df7 = pd.read_csv("meatdata7.csv")
-df8 = pd.read_csv("meatdata8.csv")
+# df1 = pd.read_csv("bakerydata1.csv")
+# df2 = pd.read_csv("bakerydata2.csv")
+# df3 = pd.read_csv("bakerydata3.csv")
+# df4 = pd.read_csv("bakerydata4.csv")
+# df5 = pd.read_csv("bakerydata5.csv")
+# df6 = pd.read_csv("bakerydata6.csv")
+# df7 = pd.read_csv("bakerydata7.csv")
+# df8 = pd.read_csv("bakerydata8.csv")
+# df9 = pd.read_csv("bakerydata9.csv")
+# df10 = pd.read_csv("bakerydata10.csv")
 
-
-# df9 = pd.read_csv("chilledfooddata9.csv")
-# df10 = pd.read_csv("chilledfooddata10.csv")
 # df11 = pd.read_csv("chilledfooddata11.csv")
 # df12 = pd.read_csv("chilledfooddata12.csv")
 # df13 = pd.read_csv("chilledfooddata13.csv")
@@ -658,22 +734,21 @@ df8 = pd.read_csv("meatdata8.csv")
 # df30 = pd.read_csv("chilledfooddata30.csv")
 
 # # Concatenate the DataFrames
-# concatenated_df = pd.concat([df1, df2, df3, df4, df5, df6, df7, df8], ignore_index=True)
+# concatenated_df = pd.concat([df1, df2, df3, df4, df5, df6, df7, df8,df9,df10], ignore_index=True)
 
-# concatenated_df.to_csv("meatdata.csv", index = False, encoding='utf-8-sig')
+# concatenated_df.to_csv("bakerydata.csv", index = False, encoding='utf-8-sig')
 
 # final_data.to_csv("chilledfooddata11.csv", index = False, encoding='utf-8-sig')
-
 
 
 # # Assuming product_urls is a list of URLs
 # df = pd.DataFrame(product_urls, columns=['URL'])
 
 # # Save to CSV
-# df.to_csv("chilledproducturls.csv", index=False)
+# df.to_csv("frozenproducturls.csv", index=False)
 
-# # Load from CSV
-# product_urls = pd.read_csv("chilledproducturls.csv")
+# Load from CSV
+product_urls = pd.read_csv("frozenproducturls.csv")
 
-# # Convert to list
-# product_urls = product_urls['URL'].tolist()
+# Convert to list
+product_urls = product_urls['URL'].tolist()
