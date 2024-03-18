@@ -1,5 +1,5 @@
 # ASDA Web Scraper
-A web scraping script that scrapes the nutritional information of grocery items off ASDA grocery website. Currently this includes items from the "Fruit, Veg & Flowers", "Meat, Poultry & Fish", "Bakery", "Chilled Food" and "Frozen Food" sections
+A web scraping script that scrapes the nutritional information of grocery items off ASDA grocery website using Selenium. Currently this includes items from the "Fruit, Veg & Flowers", "Meat, Poultry & Fish", "Bakery", "Chilled Food" and "Frozen Food" sections
 
 ## Features
 
