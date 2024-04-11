@@ -766,7 +766,3 @@ except Exception as e:
     
 collect_nutrition(product_urls,"foodcupboarddata.csv")
 # %%
-
-
-# Convert to list
-product_urls = product_urls['URL'].tolist()
