@@ -8,4 +8,7 @@ A web scraping script that scrapes the nutritional information of grocery items 
 - **Outputs:** Exports the data to CSV.
 - **Navigation:** Built-in delays and error handling.
 
+## Nutritional Information
+### Made using PowerBI
 
+![Dashboard](https://github.com/JeevanDhinsa/ASDA-Web-Scraper/blob/main/outputs/ASDA_PoweBI_Dashboard.png)
